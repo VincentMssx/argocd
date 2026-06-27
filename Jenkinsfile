@@ -10,16 +10,16 @@ spec:
     image: docker:24.0.6-cli
     command: ['cat']
     tty: true
+    env:
+    - name: DOCKER_HOST
+      value: tcp://localhost:2375
+  - name: dind
+    image: docker:24.0.6-dind
     securityContext:
       privileged: true
-      runAsUser: 0
-    volumeMounts:
-    - name: dockersock
-      mountPath: /var/run/docker.sock
-  volumes:
-  - name: dockersock
-    hostPath:
-      path: /var/run/docker.sock
+    env:
+    - name: DOCKER_TLS_CERTDIR
+      value: ""
 '''
         }
     }
@@ -33,6 +33,9 @@ spec:
                 script {
                     def imageTag = "v${env.BUILD_NUMBER}"
                     container('docker') {
+                        // Attendre que le moteur Docker interne soit prêt
+                        sh 'while ! docker ps; do sleep 1; done'
+                        
                         withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', 
                                                          usernameVariable: 'DH_USER', 
                                                          passwordVariable: 'DH_PASSWORD')]) {
@@ -51,7 +54,6 @@ spec:
                                                  passwordVariable: 'GIT_TOKEN')]) {
                     script {
                         def imageTag = "v${env.BUILD_NUMBER}"
-                        // Correction du sed pour être plus précis
                         sh "sed -i 's/tag: .*/tag: ${imageTag}/g' deploy/values.yaml"
                         sh "git config user.name 'jenkins-bot'"
                         sh "git config user.email 'jenkins@local.cluster'"
