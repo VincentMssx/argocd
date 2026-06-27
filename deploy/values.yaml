@@ -10,8 +10,11 @@ service:
   port: 80
 
 serviceAccount:
+  # Doit être true pour que le compte soit créé par Helm
   create: true
+  # Le nom sera généré automatiquement via ton helper "serviceAccountName"
   name: ""
+  annotations: {}
   automount: true
 
 # La structure complète évite le nil pointer
