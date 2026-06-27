@@ -94,20 +94,30 @@ pipeline {
 
         stage("Deploy Dev (GitOps)") {
             agent any
-            steps {
-                sh """
-                git config user.name "jenkins-bot"
-                git config user.email "jenkins@local"
+            withCredentials([
+                usernamePassword(
+                    credentialsId: 'github-credentials',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_TOKEN'
+                )
+            ]) {
 
-                git checkout main
-                git pull origin main
+                sh '''
+                    git config user.name "jenkins-bot"
+                    git config user.email "jenkins@local.cluster"
 
-                sed -i 's/tag: .*/tag: ${IMG_TAG}/' deploy/values-dev.yaml
+                    git remote set-url origin https://$GIT_USER:$GIT_TOKEN@github.com/VincentMssx/argocd.git
 
-                git add deploy/values-dev.yaml
-                git commit -m "deploy ${IMG_TAG} to dev" || true
-                git push https://${GIT_USER}:${GIT_TOKEN}@${REPO_URL} HEAD:main
-                """
+                    git checkout main
+                    git pull origin main --rebase
+
+                    sed -i "s/tag: .*/tag: '"$IMG_TAG"'/" deploy/values-dev.yaml
+
+                    git add deploy/values-dev.yaml
+                    git commit -m "deploy $IMG_TAG to dev" || true
+
+                    git push origin main
+                '''
             }
         }
 
