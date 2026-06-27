@@ -11,7 +11,11 @@ spec:
     command: ['cat']
     tty: true
     securityContext:
+      privileged: true
       runAsUser: 0
+    env:
+    - name: DOCKER_BUILDKIT
+      value: "0"
     volumeMounts:
     - name: dockersock
       mountPath: /var/run/docker.sock
@@ -32,13 +36,16 @@ spec:
                 script {
                     def imageTag = "v${env.BUILD_NUMBER}"
                     container('docker') {
-                        // Pas besoin de boucle d'attente, le socket est prêt immédiatement
                         withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', 
                                                          usernameVariable: 'DH_USER', 
                                                          passwordVariable: 'DH_PASSWORD')]) {
-                            sh "docker login -u $DH_USER -p $DH_PASSWORD"
-                            sh "docker build -t ${DOCKER_HUB_USER}/${APP_NAME}:${imageTag} ./app"
-                            sh "docker push ${DOCKER_HUB_USER}/${APP_NAME}:${imageTag}"
+                            // On force l'utilisation du socket et on désactive BuildKit
+                            sh """
+                                export DOCKER_BUILDKIT=0
+                                docker login -u $DH_USER -p $DH_PASSWORD
+                                docker build --network host -t ${DOCKER_HUB_USER}/${APP_NAME}:${imageTag} ./app
+                                docker push ${DOCKER_HUB_USER}/${APP_NAME}:${imageTag}
+                            """
                         }
                     }
                 }
