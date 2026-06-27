@@ -33,7 +33,7 @@ spec:
         stage('Test') {
             steps {
                 container('jnlp') {
-                    sh "cd app && bun test"
+                    sh "cd app && bun install && bun test"
                 }
             }
         }
