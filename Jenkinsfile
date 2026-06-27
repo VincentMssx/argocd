@@ -29,11 +29,19 @@ spec:
 
 pipeline {
     agent none 
-
+    
     environment {
         DOCKER_HUB_USER = 'vincentmsx'
         APP_NAME        = 'my-react-app'
         REPO_URL        = 'github.com/VincentMssx/argocd.git'
+        // Utilisation d'une variable globale pour le tag partagé entre stages
+        IMG_TAG         = "v${env.BUILD_NUMBER}"
+    }
+
+    options {
+        timeout(time: 1, unit: 'HOURS')
+        disableConcurrentBuilds()
+        gitLabPullRequestIdentity() // Optionnel si usage de plugin
     }
 
     stages {
@@ -41,7 +49,6 @@ pipeline {
             agent { kubernetes { yaml podYaml } }
             steps {
                 container('helm') {
-                    // Les fichiers sont déjà là, pas besoin de git clone !
                     sh "helm lint deploy/" 
                 }
             }
@@ -50,14 +57,12 @@ pipeline {
         stage('Test & Build') {
             agent { kubernetes { yaml podYaml } }
             steps {
-                script {
-                    env.IMG_TAG = "v${env.BUILD_NUMBER}"
-                    container('bun') {
-                        sh "cd app && bun install && bun test"
-                    }
-                    container('kaniko') {
-                        sh "/kaniko/executor --context `pwd`/app --dockerfile `pwd`/app/Dockerfile --destination ${DOCKER_HUB_USER}/${APP_NAME}:${IMG_TAG}"
-                    }
+                container('bun') {
+                    sh "cd app && bun install && bun test"
+                }
+                container('kaniko') {
+                    // Utilisation de variables d'environnement propres
+                    sh "/kaniko/executor --context `pwd`/app --dockerfile `pwd`/app/Dockerfile --destination ${DOCKER_HUB_USER}/${APP_NAME}:${IMG_TAG}"
                 }
             }
         }
@@ -65,43 +70,46 @@ pipeline {
         stage('Deploy to Dev') {
             agent { kubernetes { yaml podYaml } }
             steps {
-                withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-                    sh """
-                        git config user.name 'jenkins-bot'
-                        git config user.email 'jenkins@local.cluster'
-                        git pull origin main
-                        sed -i 's/tag: .*/tag: ${IMG_TAG}/g' deploy/values-dev.yaml
-                        git add deploy/values-dev.yaml
-                        git commit -m 'ci: deploy ${IMG_TAG} to dev'
-                        git push https://${GIT_USER}:${GIT_TOKEN}@${REPO_URL} HEAD:main
-                    """
-                }
+                gitCommitAndPush("deploy/values-dev.yaml", "ci: deploy ${IMG_TAG} to dev")
             }
         }
 
         stage('Promote to Prod?') {
             agent none
-            options { timeout(time: 5, unit: 'MINUTES') }
+            options { timeout(time: 15, unit: 'MINUTES') }
             steps {
-                input message: "Promouvoir ${env.IMG_TAG} en Production ?", ok: "Promouvoir"
+                input message: "Promouvoir ${IMG_TAG} en Production ?", ok: "Promouvoir"
             }
         }
 
         stage('Deploy to Prod') {
             agent { kubernetes { yaml podYaml } }
             steps {
-                withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-                    sh """
-                        git config user.name 'jenkins-bot'
-                        git config user.email 'jenkins@local.cluster'
-                        git pull origin main
-                        sed -i 's/tag: .*/tag: ${IMG_TAG}/g' deploy/values-prod.yaml
-                        git add deploy/values-prod.yaml
-                        git commit -m 'ci: promote ${IMG_TAG} to prod'
-                        git push https://${GIT_USER}:${GIT_TOKEN}@${REPO_URL} HEAD:main
-                    """
-                }
+                gitCommitAndPush("deploy/values-prod.yaml", "ci: promote ${IMG_TAG} to prod")
             }
         }
+    }
+}
+
+// Fonction utilitaire pour éviter la duplication de code et garantir l'idempotence
+def gitCommitAndPush(filePath, commitMsg) {
+    withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
+        sh """
+            git config user.name 'jenkins-bot'
+            git config user.email 'jenkins@local.cluster'
+            git pull origin main --rebase
+            
+            # Mise à jour sécurisée du tag
+            sed -i 's/tag: .*/tag: ${IMG_TAG}/g' ${filePath}
+            
+            # Vérification si des changements existent
+            if ! git diff --quiet ${filePath}; then
+                git add ${filePath}
+                git commit -m '${commitMsg}'
+                git push https://${GIT_USER}:${GIT_TOKEN}@${REPO_URL} HEAD:main
+            else
+                echo "Aucun changement détecté pour ${filePath}, passage à l'étape suivante."
+            fi
+        """
     }
 }
