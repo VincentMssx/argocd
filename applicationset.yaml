@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: my-react-app
+spec:
+  generators:
+    - list:
+        elements:
+          - env: dev
+            namespace: dev-env
+          - env: prod
+            namespace: prod-env
+
+  template:
+    metadata:
+      name: my-react-app-{{env}}
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/VincentMssx/argocd.git
+        targetRevision: main
+        path: deploy
+        helm:
+          valueFiles:
+            - values-{{env}}.yaml
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: {{namespace}}
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
