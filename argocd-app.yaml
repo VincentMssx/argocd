@@ -6,9 +6,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/VincentMssx/app-manifests.git'
+    repoURL: 'https://github.com/VincentMssx/argocd.git'
     targetRevision: HEAD
-    path: argocd # Name of Helm folder
+    path: deploy # Name of Helm folder
     helm:
       valueFiles:
         - values.yaml
