@@ -39,9 +39,8 @@ pipeline {
     }
 
     options {
-        timeout(time: 1, unit: 'HOURS')
+        timeout(time: 5, unit: 'MINUTES')
         disableConcurrentBuilds()
-        gitLabPullRequestIdentity() // Optionnel si usage de plugin
     }
 
     stages {
