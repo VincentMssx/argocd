@@ -1,0 +1,12 @@
+replicaCount: 1
+image:
+  repository: vincentmsx/my-react-app
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 80
+
+# Ces valeurs par défaut empêchent le plantage des tests
+envName: "default"

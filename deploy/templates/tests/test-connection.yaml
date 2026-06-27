@@ -5,7 +5,8 @@ metadata:
   labels:
     {{- include "my-react-app.labels" . | nindent 4 }}
   annotations:
-    "helm.sh/hook": test
+    "helm.sh/hook": test # <--- Dit à Helm/Argo que c'est un test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
   containers:
     - name: wget

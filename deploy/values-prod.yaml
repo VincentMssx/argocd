@@ -1,5 +1,1 @@
-replicaCount: 2 # Plus de puissance en prod
-image:
-  repository: vincentmsx/my-react-app
-  tag: v7
 envName: "PRODUCTION"

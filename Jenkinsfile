@@ -34,6 +34,20 @@ pipeline {
     }
 
     stages {
+        stage('Quality & Lint') {
+            agent { kubernetes { yaml podYaml } }
+            steps {
+                container('helm') {
+                    script {
+                        // On clone les manifests pour vérifier que le changement ne va pas tout casser
+                        sh "git clone https://github.com/VincentMssx/argocd-manifests.git manifests"
+                        sh "helm lint manifests/" // <--- Validation professionnelle
+                    }
+                }
+            }
+        }
+
+    stages {
         stage('Test & Build') {
             agent { kubernetes { yaml podYaml } }
             steps {
@@ -76,6 +90,10 @@ pipeline {
 
         stage('Promote to Prod?') {
             agent none // <--- LIBÈRE LE POD PENDANT L'ATTENTE
+            options {
+                // Si personne ne clique après 24 heures, le build s'arrête tout seul
+                timeout(time: 5, unit: 'MINUTES') 
+            }
             steps {
                 // Jenkins attend ici. Ton PC ne consomme plus de RAM/CPU pour ce build.
                 input message: "Promouvoir ${env.IMG_TAG} en Production ?", ok: "Promouvoir"

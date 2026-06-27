@@ -1,5 +1,1 @@
-replicaCount: 1
-image:
-  repository: vincentmsx/my-react-app
-  tag: v8
 envName: "DEVELOPMENT"
