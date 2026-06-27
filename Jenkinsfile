@@ -56,6 +56,8 @@ spec:
                                 sleep 2
                             done
                             echo "ERROR: Docker daemon failed to start"
+                            echo "KEEPING POD ALIVE FOR 10 MINUTES TO ALLOW LOG INSPECTION..."
+                            sleep 600 
                             exit 1
                         '''
                         
