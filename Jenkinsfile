@@ -75,7 +75,7 @@ pipeline {
 
         stage('Promote to Prod?') {
             agent none
-            options { timeout(time: 15, unit: 'MINUTES') }
+            options { timeout(time: 5, unit: 'MINUTES') }
             steps {
                 input message: "Promouvoir ${IMG_TAG} en Production ?", ok: "Promouvoir"
             }

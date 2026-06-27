@@ -1,6 +1,4 @@
 replicaCount: 1
-autoscaling:
-  enabled: false
 
 image:
   repository: vincentmsx/my-react-app
@@ -14,18 +12,25 @@ service:
 serviceAccount:
   create: true
   name: ""
-  automount: true # AJOUTE CELA pour ton template serviceaccount.yaml
+  automount: true
 
+# La structure complète évite le nil pointer
 ingress:
   enabled: false
-  className: ""
+  className: "nginx" # Valeur par défaut recommandée
   annotations: {}
   tls: []
   hosts:
-    - host: chart-example.local
+    - host: my-react-app.local
       paths:
         - path: /
-          pathType: ImplementationSpecific
+          pathType: Prefix # "Prefix" est plus standard que "ImplementationSpecific"
 
 httpRoute:
   enabled: false
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
