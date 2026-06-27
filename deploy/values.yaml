@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: vincentmsx/my-react-app
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: ""
 
 service:
   type: ClusterIP
