@@ -44,7 +44,7 @@ pipeline {
 
     options {
         disableConcurrentBuilds()
-        timeout(time: 10, unit: 'MINUTES')
+        timeout(time: 5, unit: 'MINUTES')
     }
 
     stages {
@@ -106,7 +106,7 @@ pipeline {
 
                 git add deploy/values-dev.yaml
                 git commit -m "deploy ${IMG_TAG} to dev" || true
-                git push origin main
+                git push https://${GIT_USER}:${GIT_TOKEN}@${REPO_URL} HEAD:main
                 """
             }
         }
@@ -132,7 +132,7 @@ pipeline {
 
                 git add deploy/values-prod.yaml
                 git commit -m "promote ${IMG_TAG} to prod" || true
-                git push origin main
+                git push https://${GIT_USER}:${GIT_TOKEN}@${REPO_URL} HEAD:main
                 """
             }
         }
