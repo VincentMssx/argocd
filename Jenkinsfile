@@ -15,7 +15,7 @@ spec:
     command: ['cat']
     tty: true
   - name: helm
-    image: alpine/helm:3.12.0
+    image: alpine/helm:3.16.1
     command: ['cat']
     tty: true
   volumes:
