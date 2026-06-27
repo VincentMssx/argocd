@@ -55,24 +55,23 @@ spec:
             steps {
                 withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
                     sh """
-                        # Configurer l'utilisateur
                         git config user.name 'jenkins-bot'
                         git config user.email 'jenkins@local.cluster'
-                        
-                        # Modifier le fichier
                         sed -i 's/tag: .*/tag: ${IMG_TAG}/g' deploy/values-dev.yaml
-                        
-                        # Faire le commit
                         git add deploy/values-dev.yaml
                         git commit -m 'ci: deploy ${IMG_TAG} to dev'
-                        
-                        # RÉCUPÉRER LES DERNIERS COMMITS (IMPORTANT)
                         git pull --rebase https://${GIT_USER}:${GIT_TOKEN}@github.com/VincentMssx/argocd.git main
-                        
-                        # Pousser
                         git push https://${GIT_USER}:${GIT_TOKEN}@github.com/VincentMssx/argocd.git HEAD:main
                     """
                 }
+            }
+        }
+
+        // --- NOUVELLE ÉTAPE ICI ---
+        stage('Promote to Prod?') {
+            steps {
+                // Cette commande met le pipeline en pause
+                input message: "Voulez-vous promouvoir la version ${env.IMG_TAG} en Production ?", ok: "Oui, déployer !"
             }
         }
 
@@ -82,14 +81,10 @@ spec:
                     sh """
                         git config user.name 'jenkins-bot'
                         git config user.email 'jenkins@local.cluster'
-                        
                         sed -i 's/tag: .*/tag: ${IMG_TAG}/g' deploy/values-prod.yaml
                         git add deploy/values-prod.yaml
                         git commit -m 'ci: promote ${IMG_TAG} to prod'
-                        
-                        # RÉCUPÉRER LE COMMIT QUI VIENT D'ÊTRE FAIT EN DEV
                         git pull --rebase https://${GIT_USER}:${GIT_TOKEN}@github.com/VincentMssx/argocd.git main
-                        
                         git push https://${GIT_USER}:${GIT_TOKEN}@github.com/VincentMssx/argocd.git HEAD:main
                     """
                 }

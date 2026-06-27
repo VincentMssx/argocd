@@ -1,17 +1,21 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: app-prod
+  name: app-prod # (et app-dev pour l'autre)
   namespace: argocd
 spec:
+  project: default    # <--- AJOUTEZ CETTE LIGNE ICI
   source:
     repoURL: 'https://github.com/VincentMssx/argocd.git'
     path: deploy
+    targetRevision: HEAD
     helm:
       valueFiles:
-        - values-prod.yaml # <--- IMPORTANT
+        - values-prod.yaml # (ou values-prod.yaml)
   destination:
     server: 'https://kubernetes.default.svc'
-    namespace: prod-env
+    namespace: prod-env   # (ou prod-env)
   syncPolicy:
-    automated: { prune: true, selfHeal: true }
+    automated:
+      prune: true
+      selfHeal: true
