@@ -6,23 +6,20 @@ apiVersion: v1
 kind: Pod
 spec:
   containers:
-  - name: docker
-    image: docker:24.0.6-cli
-    command: ['cat']
-    tty: true
-    securityContext:
-      privileged: true
-      runAsUser: 0
-    env:
-    - name: DOCKER_BUILDKIT
-      value: "0"
+  - name: kaniko
+    image: gcr.io/kaniko-project/executor:debug
+    command: ['sleep']
+    args: ['99d']
     volumeMounts:
-    - name: dockersock
-      mountPath: /var/run/docker.sock
+    - name: kaniko-secret
+      mountPath: /kaniko/.docker
   volumes:
-  - name: dockersock
-    hostPath:
-      path: /var/run/docker.sock
+  - name: kaniko-secret
+    secret:
+      secretName: dockerhub-config
+      items:
+      - key: .dockerconfigjson
+        path: config.json
 '''
         }
     }
@@ -31,22 +28,18 @@ spec:
         APP_NAME        = 'my-react-app'
     }
     stages {
-        stage('Build and Push Docker Image') {
+        stage('Build and Push with Kaniko') {
             steps {
                 script {
                     def imageTag = "v${env.BUILD_NUMBER}"
-                    container('docker') {
-                        withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', 
-                                                         usernameVariable: 'DH_USER', 
-                                                         passwordVariable: 'DH_PASSWORD')]) {
-                            // On force l'utilisation du socket et on désactive BuildKit
-                            sh """
-                                export DOCKER_BUILDKIT=0
-                                docker login -u $DH_USER -p $DH_PASSWORD
-                                docker build --network host -t ${DOCKER_HUB_USER}/${APP_NAME}:${imageTag} ./app
-                                docker push ${DOCKER_HUB_USER}/${APP_NAME}:${imageTag}
-                            """
-                        }
+                    container('kaniko') {
+                        // Kaniko construit et pousse en une seule commande
+                        // Pas besoin de 'docker login' ou 'docker build'
+                        sh """
+                        /kaniko/executor --context `pwd`/app \
+                        --dockerfile `pwd`/app/Dockerfile \
+                        --destination ${DOCKER_HUB_USER}/${APP_NAME}:${imageTag}
+                        """
                     }
                 }
             }
