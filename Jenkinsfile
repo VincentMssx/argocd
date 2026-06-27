@@ -13,6 +13,10 @@ spec:
     env:
     - name: DOCKER_HOST
       value: tcp://localhost:2375
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
   - name: dind
     image: docker:24.0.6-dind
     securityContext:
@@ -20,6 +24,19 @@ spec:
     env:
     - name: DOCKER_TLS_CERTDIR
       value: ""
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+    volumeMounts:
+    - name: docker-storage
+      mountPath: /var/lib/docker
+  volumes:
+  - name: docker-storage
+    emptyDir: {}
 '''
         }
     }
@@ -33,8 +50,19 @@ spec:
                 script {
                     def imageTag = "v${env.BUILD_NUMBER}"
                     container('docker') {
-                        // Attendre que le moteur Docker interne soit prêt
-                        sh 'while ! docker ps; do sleep 1; done'
+                        // Attendre jusqu'à 30 secondes que Docker démarre
+                        sh '''
+                            counter=0
+                            while ! docker ps > /dev/null 2>&1; do
+                                if [ $counter -gt 30 ]; then
+                                    echo "Docker daemon failed to start"
+                                    exit 1
+                                fi
+                                echo "Waiting for Docker daemon..."
+                                sleep 2
+                                counter=$((counter+2))
+                            done
+                        '''
                         
                         withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', 
                                                          usernameVariable: 'DH_USER', 
