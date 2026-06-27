@@ -13,6 +13,8 @@ spec:
     volumeMounts:
     - name: kaniko-secret
       mountPath: /kaniko/.docker
+    - name: kaniko-secret
+      mountPath: /root/.docker  # <--- Double sécurité
   volumes:
   - name: kaniko-secret
     secret:
