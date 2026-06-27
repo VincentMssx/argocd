@@ -1,4 +1,3 @@
-// On définit le template du Pod une seule fois pour le réutiliser
 def podYaml = '''
 apiVersion: v1
 kind: Pod
@@ -15,6 +14,10 @@ spec:
     image: oven/bun:1
     command: ['cat']
     tty: true
+  - name: helm
+    image: alpine/helm:3.12.0
+    command: ['cat']
+    tty: true
   volumes:
   - name: kaniko-secret
     secret:
@@ -25,7 +28,7 @@ spec:
 '''
 
 pipeline {
-    agent none // <--- Très important : Libère les ressources par défaut
+    agent none 
 
     environment {
         DOCKER_HUB_USER = 'vincentmsx'
@@ -38,11 +41,8 @@ pipeline {
             agent { kubernetes { yaml podYaml } }
             steps {
                 container('helm') {
-                    script {
-                        // On clone les manifests pour vérifier que le changement ne va pas tout casser
-                        sh "git clone https://github.com/VincentMssx/argocd-manifests.git manifests"
-                        sh "helm lint manifests/" // <--- Validation professionnelle
-                    }
+                    // Les fichiers sont déjà là, pas besoin de git clone !
+                    sh "helm lint deploy/" 
                 }
             }
         }
@@ -52,11 +52,9 @@ pipeline {
             steps {
                 script {
                     env.IMG_TAG = "v${env.BUILD_NUMBER}"
-                    
                     container('bun') {
                         sh "cd app && bun install && bun test"
                     }
-                    
                     container('kaniko') {
                         sh "/kaniko/executor --context `pwd`/app --dockerfile `pwd`/app/Dockerfile --destination ${DOCKER_HUB_USER}/${APP_NAME}:${IMG_TAG}"
                     }
@@ -71,14 +69,8 @@ pipeline {
                     sh """
                         git config user.name 'jenkins-bot'
                         git config user.email 'jenkins@local.cluster'
-                        
-                        # 1. On récupère d'abord la version la plus fraîche pour éviter les conflits
                         git pull origin main
-                        
-                        # 2. On modifie le tag
                         sed -i 's/tag: .*/tag: ${IMG_TAG}/g' deploy/values-dev.yaml
-                        
-                        # 3. On push
                         git add deploy/values-dev.yaml
                         git commit -m 'ci: deploy ${IMG_TAG} to dev'
                         git push https://${GIT_USER}:${GIT_TOKEN}@${REPO_URL} HEAD:main
@@ -88,13 +80,9 @@ pipeline {
         }
 
         stage('Promote to Prod?') {
-            agent none // <--- LIBÈRE LE POD PENDANT L'ATTENTE
-            options {
-                // Si personne ne clique après 24 heures, le build s'arrête tout seul
-                timeout(time: 5, unit: 'MINUTES') 
-            }
+            agent none
+            options { timeout(time: 5, unit: 'MINUTES') }
             steps {
-                // Jenkins attend ici. Ton PC ne consomme plus de RAM/CPU pour ce build.
                 input message: "Promouvoir ${env.IMG_TAG} en Production ?", ok: "Promouvoir"
             }
         }
@@ -106,14 +94,8 @@ pipeline {
                     sh """
                         git config user.name 'jenkins-bot'
                         git config user.email 'jenkins@local.cluster'
-                        
-                        # 1. On récupère le commit qui a été fait en Dev
                         git pull origin main
-                        
-                        # 2. On modifie la Prod
                         sed -i 's/tag: .*/tag: ${IMG_TAG}/g' deploy/values-prod.yaml
-                        
-                        # 3. On push
                         git add deploy/values-prod.yaml
                         git commit -m 'ci: promote ${IMG_TAG} to prod'
                         git push https://${GIT_USER}:${GIT_TOKEN}@${REPO_URL} HEAD:main
