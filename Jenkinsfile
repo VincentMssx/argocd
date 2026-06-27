@@ -147,25 +147,22 @@ pipeline {
                     )
                 ]) {
 
-                    container('yq') {
+                    sh '''
+                        git config user.name "jenkins-bot"
+                        git config user.email "jenkins@local"
 
-                        sh '''
-                            git config user.name "jenkins-bot"
-                            git config user.email "jenkins@local"
+                        git checkout main
+                        git pull origin main --rebase
 
-                            git checkout main
-                            git pull origin main --rebase
+                        export IMG_TAG="$IMG_TAG"
 
-                            export IMG_TAG="$IMG_TAG"
+                        sed -i "s/tag: .*/tag: '"$IMG_TAG"'/" deploy/values-prod.yaml
 
-                            sed -i "s/tag: .*/tag: '"$IMG_TAG"'/" deploy/values-prod.yaml
+                        git add deploy/values-prod.yaml
+                        git commit -m "promote $IMG_TAG to prod" || echo "No changes"
 
-                            git add deploy/values-prod.yaml
-                            git commit -m "promote $IMG_TAG to prod" || echo "No changes"
-
-                            git push https://$GIT_USER:$GIT_TOKEN@github.com/VincentMssx/argocd.git HEAD:main
-                        '''
-                    }
+                        git push https://$GIT_USER:$GIT_TOKEN@github.com/VincentMssx/argocd.git HEAD:main
+                    '''
                 }
             }
         }
