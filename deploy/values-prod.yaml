@@ -1,1 +1,4 @@
 envName: "PRODUCTION"
+
+image:
+  tag: v26

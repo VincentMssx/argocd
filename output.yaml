@@ -1,0 +1,94 @@
+---
+# Source: my-react-app/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: myapp-my-react-app
+  labels:
+    helm.sh/chart: my-react-app-0.1.0
+    app.kubernetes.io/name: my-react-app
+    app.kubernetes.io/instance: myapp
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+automountServiceAccountToken: true
+---
+# Source: my-react-app/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-my-react-app
+  labels:
+    helm.sh/chart: my-react-app-0.1.0
+    app.kubernetes.io/name: my-react-app
+    app.kubernetes.io/instance: myapp
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: my-react-app
+    app.kubernetes.io/instance: myapp
+---
+# Source: my-react-app/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-my-react-app
+  labels:
+    helm.sh/chart: my-react-app-0.1.0
+    app.kubernetes.io/name: my-react-app
+    app.kubernetes.io/instance: myapp
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  # Ajoute un "else" pour éviter que ce soit vide
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: my-react-app
+      app.kubernetes.io/instance: myapp
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: my-react-app-0.1.0
+        app.kubernetes.io/name: my-react-app
+        app.kubernetes.io/instance: myapp
+        app.kubernetes.io/version: "latest"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      serviceAccountName: myapp-my-react-app
+      containers:
+        - name: my-react-app
+          image: "vincentmsx/my-react-app:v26"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+---
+# Source: my-react-app/templates/tests/test-connection.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "myapp-my-react-app-test-connection"
+  labels:
+    helm.sh/chart: my-react-app-0.1.0
+    app.kubernetes.io/name: my-react-app
+    app.kubernetes.io/instance: myapp
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": test # <--- Dit à Helm/Argo que c'est un test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['myapp-my-react-app:80']
+  restartPolicy: Never

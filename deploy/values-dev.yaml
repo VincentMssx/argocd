@@ -1,1 +1,4 @@
 envName: "DEVELOPMENT"
+
+image:
+  tag: v26

@@ -3,6 +3,12 @@ apiVersion: v1
 kind: Pod
 spec:
   containers:
+
+  - name: bun
+    image: oven/bun:1
+    command: ['cat']
+    tty: true
+
   - name: kaniko
     image: gcr.io/kaniko-project/executor:debug
     command: ['sleep']
@@ -10,14 +16,12 @@ spec:
     volumeMounts:
     - name: kaniko-secret
       mountPath: /kaniko/.docker
-  - name: bun
-    image: oven/bun:1
-    command: ['cat']
-    tty: true
+
   - name: helm
-    image: alpine/helm:3.21.2
+    image: alpine/helm:3.14.4
     command: ['cat']
     tty: true
+
   volumes:
   - name: kaniko-secret
     secret:
@@ -28,87 +32,109 @@ spec:
 '''
 
 pipeline {
-    agent none 
-    
+
+    agent none
+
     environment {
-        DOCKER_HUB_USER = 'vincentmsx'
-        APP_NAME        = 'my-react-app'
-        REPO_URL        = 'github.com/VincentMssx/argocd.git'
-        // Utilisation d'une variable globale pour le tag partagé entre stages
-        IMG_TAG         = "v${env.BUILD_NUMBER}"
+        DOCKER_HUB_USER = "vincentmsx"
+        APP_NAME = "my-react-app"
+        REPO_URL = "github.com/VincentMssx/argocd.git"
+        IMG_TAG = "v${BUILD_NUMBER}"
     }
 
     options {
-        timeout(time: 5, unit: 'MINUTES')
         disableConcurrentBuilds()
+        timeout(time: 10, unit: 'MINUTES')
     }
 
     stages {
-        stage('Quality & Lint') {
+
+        stage("Checkout") {
+            agent any
+            steps {
+                checkout scm
+            }
+        }
+
+        stage("Tests") {
             agent { kubernetes { yaml podYaml } }
             steps {
-                container('helm') {
-                    sh "helm lint deploy/" 
+                container("bun") {
+                    sh """
+                    cd app
+                    bun install
+                    bun test
+                    """
                 }
             }
         }
 
-        stage('Test & Build') {
+        stage("Helm Lint") {
             agent { kubernetes { yaml podYaml } }
             steps {
-                container('bun') {
-                    sh "cd app && bun install && bun test"
-                }
-                container('kaniko') {
-                    // Utilisation de variables d'environnement propres
-                    sh "/kaniko/executor --context `pwd`/app --dockerfile `pwd`/app/Dockerfile --destination ${DOCKER_HUB_USER}/${APP_NAME}:${IMG_TAG}"
+                container("helm") {
+                    sh "helm lint deploy/"
                 }
             }
         }
 
-        stage('Deploy to Dev') {
+        stage("Build Image") {
             agent { kubernetes { yaml podYaml } }
             steps {
-                gitCommitAndPush("deploy/values-dev.yaml", "ci: deploy ${IMG_TAG} to dev")
+                container("kaniko") {
+                    sh """
+                    /kaniko/executor \
+                        --context `pwd`/app \
+                        --dockerfile `pwd`/app/Dockerfile \
+                        --destination ${DOCKER_HUB_USER}/${APP_NAME}:${IMG_TAG}
+                    """
+                }
             }
         }
 
-        stage('Promote to Prod?') {
+        stage("Deploy Dev (GitOps)") {
+            agent any
+            steps {
+                sh """
+                git config user.name "jenkins-bot"
+                git config user.email "jenkins@local"
+
+                git checkout main
+                git pull origin main
+
+                sed -i 's/tag: .*/tag: ${IMG_TAG}/' deploy/values-dev.yaml
+
+                git add deploy/values-dev.yaml
+                git commit -m "deploy ${IMG_TAG} to dev" || true
+                git push origin main
+                """
+            }
+        }
+
+        stage("Approve Prod") {
             agent none
-            options { timeout(time: 5, unit: 'MINUTES') }
             steps {
-                input message: "Promouvoir ${IMG_TAG} en Production ?", ok: "Promouvoir"
+                input message: "Deploy ${IMG_TAG} to production?"
             }
         }
 
-        stage('Deploy to Prod') {
-            agent { kubernetes { yaml podYaml } }
+        stage("Deploy Prod") {
+            agent any
             steps {
-                gitCommitAndPush("deploy/values-prod.yaml", "ci: promote ${IMG_TAG} to prod")
+                sh """
+                git config user.name "jenkins-bot"
+                git config user.email "jenkins@local"
+
+                git checkout main
+                git pull origin main
+
+                sed -i 's/tag: .*/tag: ${IMG_TAG}/' deploy/values-prod.yaml
+
+                git add deploy/values-prod.yaml
+                git commit -m "promote ${IMG_TAG} to prod" || true
+                git push origin main
+                """
             }
         }
-    }
-}
-
-// Fonction utilitaire pour éviter la duplication de code et garantir l'idempotence
-def gitCommitAndPush(filePath, commitMsg) {
-    withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-        sh """
-            git config user.name 'jenkins-bot'
-            git config user.email 'jenkins@local.cluster'
-            git pull origin main --rebase
-            
-            # Mise à jour sécurisée du tag
-            sed -i 's/tag: .*/tag: ${IMG_TAG}/g' ${filePath}
-            
-            # Vérification si des changements existent
-            if ! git diff --quiet ${filePath}; then
-                git add ${filePath}
-                git commit -m '${commitMsg}'
-                git push https://${GIT_USER}:${GIT_TOKEN}@${REPO_URL} HEAD:main
-            else
-                echo "Aucun changement détecté pour ${filePath}, passage à l'étape suivante."
-            fi
-        """
     }
 }
