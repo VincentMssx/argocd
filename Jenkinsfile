@@ -30,6 +30,13 @@ spec:
         APP_NAME        = 'my-react-app'
     }
     stages {
+        stage('Test') {
+            steps {
+                container('jnlp') {
+                    sh "cd app && bun test"
+                }
+            }
+        }
         stage('Build and Push with Kaniko') {
             steps {
                 script {
