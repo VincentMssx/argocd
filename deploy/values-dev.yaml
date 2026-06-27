@@ -1,5 +1,5 @@
 replicaCount: 1
 image:
   repository: vincentmsx/my-react-app
-  tag: latest # Sera mis à jour par Jenkins
+  tag: v4
 envName: "DEVELOPMENT"
