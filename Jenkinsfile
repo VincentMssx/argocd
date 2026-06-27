@@ -10,28 +10,15 @@ spec:
     image: docker:24.0.6-cli
     command: ['cat']
     tty: true
-    env:
-    - name: DOCKER_HOST
-      value: tcp://localhost:2375
-  - name: dind
-    image: docker:24.0.6-dind
     securityContext:
-      privileged: true
-    command: ["dockerd-entrypoint.sh"]
-    args: ["--tls=false", "--host=tcp://localhost:2375", "--storage-driver=vfs"]
-    env:
-    - name: DOCKER_TLS_CERTDIR
-      value: ""
-    resources:
-      requests:
-        memory: "1Gi"
-        cpu: "500m"
+      runAsUser: 0
     volumeMounts:
-    - name: docker-storage
-      mountPath: /var/lib/docker
+    - name: dockersock
+      mountPath: /var/run/docker.sock
   volumes:
-  - name: docker-storage
-    emptyDir: {}
+  - name: dockersock
+    hostPath:
+      path: /var/run/docker.sock
 '''
         }
     }
@@ -45,22 +32,7 @@ spec:
                 script {
                     def imageTag = "v${env.BUILD_NUMBER}"
                     container('docker') {
-                        // Attente du démarrage avec affichage des erreurs potentielles
-                        sh '''
-                            echo "Waiting for Docker daemon to start..."
-                            for i in $(seq 1 20); do
-                                if docker ps > /dev/null 2>&1; then
-                                    echo "Docker is ready!"
-                                    exit 0
-                                fi
-                                sleep 2
-                            done
-                            echo "ERROR: Docker daemon failed to start"
-                            echo "KEEPING POD ALIVE FOR 10 MINUTES TO ALLOW LOG INSPECTION..."
-                            sleep 600 
-                            exit 1
-                        '''
-                        
+                        // Pas besoin de boucle d'attente, le socket est prêt immédiatement
                         withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', 
                                                          usernameVariable: 'DH_USER', 
                                                          passwordVariable: 'DH_PASSWORD')]) {
