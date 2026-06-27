@@ -95,18 +95,5 @@ spec:
                 }
             }
         }
-
-        stage('Deploy to Prod') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GIT_USER', passwordVariable: 'GIT_TOKEN')]) {
-                    sh """
-                        sed -i 's/tag: .*/tag: ${IMG_TAG}/g' deploy/values-prod.yaml
-                        git add deploy/values-prod.yaml
-                        git commit -m 'ci: promote ${IMG_TAG} to prod'
-                        git push https://${GIT_USER}:${GIT_TOKEN}@github.com/VincentMssx/argocd.git HEAD:main
-                    """
-                }
-            }
-        }
     }
 }
