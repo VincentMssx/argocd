@@ -1,23 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: argocd-gitops
+  name: app-prod
   namespace: argocd
 spec:
-  project: default
   source:
     repoURL: 'https://github.com/VincentMssx/argocd.git'
-    targetRevision: HEAD
-    path: deploy # Name of Helm folder
+    path: deploy
     helm:
       valueFiles:
-        - values.yaml
+        - values-prod.yaml # <--- IMPORTANT
   destination:
     server: 'https://kubernetes.default.svc'
-    namespace: dev-env
+    namespace: prod-env
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
+    automated: { prune: true, selfHeal: true }

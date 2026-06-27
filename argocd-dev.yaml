@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-dev
+  namespace: argocd
+spec:
+  source:
+    repoURL: 'https://github.com/VincentMssx/argocd.git'
+    path: deploy
+    helm:
+      valueFiles:
+        - values-dev.yaml # <--- IMPORTANT
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: dev-env
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
