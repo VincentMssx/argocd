@@ -10,6 +10,9 @@ spec:
     image: docker:24.0.6-cli
     command: ['cat']
     tty: true
+    securityContext:
+      privileged: true
+      runAsUser: 0
     volumeMounts:
     - name: dockersock
       mountPath: /var/run/docker.sock
@@ -21,7 +24,7 @@ spec:
         }
     }
     environment {
-        DOCKER_HUB_USER = 'vincentmsx' // Votre nom d'utilisateur Docker Hub
+        DOCKER_HUB_USER = 'vincentmsx'
         APP_NAME        = 'my-react-app'
     }
     stages {
@@ -29,7 +32,6 @@ spec:
             steps {
                 script {
                     def imageTag = "v${env.BUILD_NUMBER}"
-                    // On utilise le container 'docker' défini au début
                     container('docker') {
                         withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', 
                                                          usernameVariable: 'DH_USER', 
@@ -44,12 +46,12 @@ spec:
         }
         stage('Update Manifests') {
             steps {
-                // Cette étape n'a pas besoin de Docker, elle utilise l'agent par défaut (jnlp)
                 withCredentials([usernamePassword(credentialsId: 'github-credentials', 
                                                  usernameVariable: 'GIT_USER', 
                                                  passwordVariable: 'GIT_TOKEN')]) {
                     script {
                         def imageTag = "v${env.BUILD_NUMBER}"
+                        // Correction du sed pour être plus précis
                         sh "sed -i 's/tag: .*/tag: ${imageTag}/g' deploy/values.yaml"
                         sh "git config user.name 'jenkins-bot'"
                         sh "git config user.email 'jenkins@local.cluster'"
