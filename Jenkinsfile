@@ -58,7 +58,7 @@ spec:
                         sh "git config user.email 'jenkins@local.cluster'"
                         sh "git add deploy/values.yaml"
                         sh "git commit -m 'ci: update image tag to ${imageTag}'"
-                        sh "git push https://${GIT_USER}:${GIT_TOKEN}@github.com/VincentMssx/argocd.git main"
+                        sh "git push https://${GIT_USER}:${GIT_TOKEN}@github.com/VincentMssx/argocd.git HEAD:main"
                     }
                 }
             }
