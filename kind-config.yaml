@@ -4,4 +4,4 @@ nodes:
 - role: control-plane
   extraPortMappings:
   - containerPort: 30080
-    hostPort: 9090 # For Jenkins/App access
+    hostPort: 8080 # For Jenkins/App access
