@@ -15,3 +15,17 @@ serviceAccount:
   create: true
   name: ""
   automount: true # AJOUTE CELA pour ton template serviceaccount.yaml
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  tls: []
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+
+httpRoute:
+  enabled: false
