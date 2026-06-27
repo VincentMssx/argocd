@@ -47,7 +47,6 @@ pipeline {
             }
         }
 
-    stages {
         stage('Test & Build') {
             agent { kubernetes { yaml podYaml } }
             steps {
