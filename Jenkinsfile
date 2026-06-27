@@ -13,14 +13,12 @@ spec:
     env:
     - name: DOCKER_HOST
       value: tcp://localhost:2375
-    resources:
-      requests:
-        memory: "256Mi"
-        cpu: "100m"
   - name: dind
     image: docker:24.0.6-dind
     securityContext:
       privileged: true
+    command: ["dockerd-entrypoint.sh"]
+    args: ["--tls=false", "--host=tcp://localhost:2375", "--storage-driver=vfs"]
     env:
     - name: DOCKER_TLS_CERTDIR
       value: ""
@@ -28,9 +26,6 @@ spec:
       requests:
         memory: "1Gi"
         cpu: "500m"
-      limits:
-        memory: "2Gi"
-        cpu: "1000m"
     volumeMounts:
     - name: docker-storage
       mountPath: /var/lib/docker
@@ -50,18 +45,18 @@ spec:
                 script {
                     def imageTag = "v${env.BUILD_NUMBER}"
                     container('docker') {
-                        // Attendre jusqu'à 30 secondes que Docker démarre
+                        // Attente du démarrage avec affichage des erreurs potentielles
                         sh '''
-                            counter=0
-                            while ! docker ps > /dev/null 2>&1; do
-                                if [ $counter -gt 30 ]; then
-                                    echo "Docker daemon failed to start"
-                                    exit 1
+                            echo "Waiting for Docker daemon to start..."
+                            for i in $(seq 1 20); do
+                                if docker ps > /dev/null 2>&1; then
+                                    echo "Docker is ready!"
+                                    exit 0
                                 fi
-                                echo "Waiting for Docker daemon..."
                                 sleep 2
-                                counter=$((counter+2))
                             done
+                            echo "ERROR: Docker daemon failed to start"
+                            exit 1
                         '''
                         
                         withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', 
