@@ -126,12 +126,12 @@ pipeline {
             }
         }
 
-        stage("Approve Prod") {
-            agent none
-            steps {
-                input message: "Deploy ${IMG_TAG} to production?"
-            }
-        }
+        // stage("Approve Prod") {
+        //     agent none
+        //     steps {
+        //         input message: "Deploy ${IMG_TAG} to production?"
+        //     }
+        // }
 
         stage("Deploy Prod") {
 
