@@ -158,7 +158,7 @@ pipeline {
 
                             export IMG_TAG="$IMG_TAG"
 
-                            yq e '.image.tag = strenv(IMG_TAG)' -i deploy/values-prod.yaml
+                            sed -i "s/tag: .*/tag: '"$IMG_TAG"'/" deploy/values-prod.yaml
 
                             git add deploy/values-prod.yaml
                             git commit -m "promote $IMG_TAG to prod" || echo "No changes"
