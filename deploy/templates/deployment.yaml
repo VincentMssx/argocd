@@ -5,6 +5,10 @@ metadata:
   labels:
     {{- include "my-react-app.labels" . | nindent 4 }}
 spec:
+  {{- if .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  # Ajoute un "else" pour éviter que ce soit vide
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
