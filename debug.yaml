@@ -1,0 +1,166 @@
+---
+# Source: my-react-app/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: my-react-app
+  labels:
+    helm.sh/chart: my-react-app-0.1.0
+    app.kubernetes.io/name: my-react-app
+    app.kubernetes.io/instance: my-react-app
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+automountServiceAccountToken: true
+---
+# Source: my-react-app/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-react-app-config
+  labels:
+    helm.sh/chart: my-react-app-0.1.0
+    app.kubernetes.io/name: my-react-app
+    app.kubernetes.io/instance: my-react-app
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+data:
+  config.js: |
+    window.env = {
+      envName: "DEVELOPMENT"
+    };
+---
+# Source: my-react-app/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-react-app
+  labels:
+    helm.sh/chart: my-react-app-0.1.0
+    app.kubernetes.io/name: my-react-app
+    app.kubernetes.io/instance: my-react-app
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app.kubernetes.io/name: my-react-app
+    app.kubernetes.io/instance: my-react-app
+---
+# Source: my-react-app/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-react-app
+  labels:
+    helm.sh/chart: my-react-app-0.1.0
+    app.kubernetes.io/name: my-react-app
+    app.kubernetes.io/instance: my-react-app
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: my-react-app
+      app.kubernetes.io/instance: my-react-app
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: my-react-app-0.1.0
+        app.kubernetes.io/name: my-react-app
+        app.kubernetes.io/instance: my-react-app
+        app.kubernetes.io/version: "latest"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      serviceAccountName: my-react-app
+      containers:
+        - name: my-react-app
+          image: "vincentmsx/my-react-app:v39-dev"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          # 1. MOUNT CONFIG.JS FROM THE CONFIGMAP INTO YOUR APPS STATIC FOLDER
+          volumeMounts:
+            - name: config-volume
+              mountPath: /usr/share/nginx/html/config.js  # <-- Change this to where your container serves index.html (e.g. /app/dist/config.js or /usr/share/nginx/html/config.js)
+              subPath: config.js
+      # 2. DEFINE THE CONFIGMAP AS A VOLUME
+      volumes:
+        - name: config-volume
+          configMap:
+            name: my-react-app-config
+---
+# Source: my-react-app/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-react-app
+  labels:
+    helm.sh/chart: my-react-app-0.1.0
+    app.kubernetes.io/name: my-react-app
+    app.kubernetes.io/instance: my-react-app
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: "dev.my-app.local"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-react-app
+                port:
+                  number: 80
+---
+# Source: my-react-app/templates/tests/test-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-ingress
+  namespace: dev-env
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+  - host: dev.my-app.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app-dev-my-react-app
+            port:
+              number: 80
+---
+# Source: my-react-app/templates/tests/test-connection.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "my-react-app-test-connection"
+  labels:
+    helm.sh/chart: my-react-app-0.1.0
+    app.kubernetes.io/name: my-react-app
+    app.kubernetes.io/instance: my-react-app
+    app.kubernetes.io/version: "latest"
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": test # <--- Dit à Helm/Argo que c'est un test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args: ['my-react-app:80']
+  restartPolicy: Never
