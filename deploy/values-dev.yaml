@@ -1,7 +1,7 @@
 envName: "DEVELOPMENT"
 
 image:
-  tag: 'v40'
+  tag: 'v43'
 ingress:
   hosts:
     - host: dev.my-app.local
