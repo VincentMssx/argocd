@@ -1,4 +1,4 @@
 envName: "DEVELOPMENT"
 
 image:
-  tag: 'v38'
+  tag: 'v39'
