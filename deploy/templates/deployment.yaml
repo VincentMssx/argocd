@@ -54,14 +54,22 @@ spec:
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.volumeMounts }}
+          # 1. MOUNT CONFIG.JS FROM THE CONFIGMAP INTO YOUR APPS STATIC FOLDER
           volumeMounts:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-      {{- with .Values.volumes }}
+            - name: config-volume
+              mountPath: /usr/share/nginx/html/config.js  # <-- Change this to where your container serves index.html (e.g. /app/dist/config.js or /usr/share/nginx/html/config.js)
+              subPath: config.js
+            {{- if .Values.volumeMounts }}
+            {{- toYaml .Values.volumeMounts | nindent 12 }}
+            {{- end }}
+      # 2. DEFINE THE CONFIGMAP AS A VOLUME
       volumes:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        - name: config-volume
+          configMap:
+            name: {{ include "my-react-app.fullname" . }}-config
+        {{- if .Values.volumes }}
+        {{- toYaml .Values.volumes | nindent 8 }}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
