@@ -1,4 +1,4 @@
 envName: "PRODUCTION"
 
 image:
-  tag: 'v38'
+  tag: 'v39'
