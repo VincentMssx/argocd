@@ -1,7 +1,7 @@
 envName: "PRODUCTION"
 
 image:
-  tag: 'v43'
+  tag: 'v44'
 ingress:
   hosts:
     - host: prod.my-app.local
