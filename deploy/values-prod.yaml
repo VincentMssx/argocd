@@ -1,4 +1,10 @@
 envName: "PRODUCTION"
 
 image:
-  tag: 'v39'
+  tag: 'v39-prod'
+ingress:
+  hosts:
+    - host: prod.my-app.local
+      paths:
+        - path: /
+          pathType: Prefix

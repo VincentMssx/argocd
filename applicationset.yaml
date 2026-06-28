@@ -22,6 +22,7 @@ spec:
         path: deploy
         helm:
           valueFiles:
+            - values.yaml
             - values-{{env}}.yaml
       destination:
         server: https://kubernetes.default.svc
@@ -29,6 +30,8 @@ spec:
       syncPolicy:
         syncOptions:
           - CreateNamespace=true
+          - ApplyOutOfSyncOnly=true
+          - PruneLast=true
         automated:
           prune: true
           selfHeal: true

@@ -1,4 +1,10 @@
 envName: "DEVELOPMENT"
 
 image:
-  tag: 'v39'
+  tag: 'v39-dev'
+ingress:
+  hosts:
+    - host: dev.my-app.local
+      paths:
+        - path: /
+          pathType: Prefix

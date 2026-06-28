@@ -19,7 +19,7 @@ serviceAccount:
 
 # La structure complète évite le nil pointer
 ingress:
-  enabled: false
+  enabled: true
   className: "nginx" # Valeur par défaut recommandée
   annotations: {}
   tls: []
